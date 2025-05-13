@@ -5,7 +5,7 @@ The player controls a snake that evolves by gaining XP, unlocking powers, and fa
 
 ## 🚀 Getting Started
 ### ✅ Prerequisites
-   - Lua v 5.4.7 or higher.
+   - Lua v5.4.7 or higher.
    - LÖVE (Love2D) v11.5 or higher.
    - Tested on Windows.
 
