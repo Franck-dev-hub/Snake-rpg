@@ -31,6 +31,17 @@ If you encounter issues:
 - Franck-dev-hub - Franck S. - Initial development and design.
 
 ## 📝 Version History
+- **v1.3.0**:
+  - Add level-up system
+  - Display walls
+- **v1.2.0**:
+  - Add debug mode for AI demo
+  - Code optimisation
+- **v1.1.0**:
+  - Add menus
+  - Add score tracking
+  - BFS demo
+  - Bug fix
 - **v1.0.0**:
   - Base Snake gameplay.
 

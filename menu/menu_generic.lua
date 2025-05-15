@@ -21,22 +21,24 @@ end
 
 function menu_generic.draw(menu)
     love.graphics.clear(0.1, 0.1, 0.1)
+    local screenWidth = love.graphics.getWidth()
+    local screenHeight = love.graphics.getHeight()
     love.graphics.setFont(love.graphics.newFont(fontSettings.font_path, 40))
     love.graphics.setColor(1, 1, 1)
-    love.graphics.printf(menu.title, 0, 100, gameConfig.screenWidth, "center")
+    love.graphics.printf(menu.title, 0, 100, screenWidth, "center")
 
     love.graphics.setFont(love.graphics.newFont(fontSettings.font_path, 24))
     for i, opt in ipairs(menu.options) do
         local y = 200 + (i-1)*50
         if i == menu.selected then
             local color = menu.color or {0.2, 0.7, 0.2}
-            love.graphics.setColor(color)
-            love.graphics.rectangle("fill", gameConfig.screenWidth/2-150, y-5, 300, 40, 8, 8)
-            love.graphics.setColor(0, 0, 0)
+            love.graphics.setColor(color) -- main color
+            love.graphics.rectangle("fill", screenWidth/2-150, y-5, 300, 40, 8, 8)
+            love.graphics.setColor(0, 0, 0) -- #000000 for selected text
         else
-            love.graphics.setColor(1, 1, 1)
+            love.graphics.setColor(1, 1, 1) -- #FFFFFF for unselected text
         end
-        love.graphics.printf(opt.label, 0, y, gameConfig.screenWidth, "center")
+        love.graphics.printf(opt.label, 0, y, screenWidth, "center")
     end
 end
 

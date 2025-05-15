@@ -5,19 +5,19 @@ local bfs = {}
 bfs.settings = {
     debug = false,
     altPathCount = 100,      -- Number of alternative paths to test
-    altPathRadius = 9,      -- Radius around the head for alternative targets
+    altPathRadius = 9,       -- Radius around the head for alternative targets
 }
 
 local snake_grid = {}
 local food_grid = {}
 local path = {}
 
---- Toggle debug mode for AI visualization
+-- Toggle debug mode for AI visualization
 function bfs.toggleDebugMode()
     bfs.settings.debug = not bfs.settings.debug
 end
 
---- Build a set of occupied cells by the snake for fast lookup
+-- Build a set of occupied cells by the snake for fast lookup
 local function build_snake_set(snake)
     local set = {}
     for i = 1, #snake do
@@ -26,7 +26,7 @@ local function build_snake_set(snake)
     return set
 end
 
---- Count the number of accessible cells from a given position using BFS
+-- Count the number of accessible cells from a given position using BFS
 local function count_accessible_cells(start, snake_grid, grid_size)
     local rows, cols = grid_size[1], grid_size[2]
     local directions = {{-1,0},{1,0},{0,-1},{0,1}}
@@ -51,7 +51,7 @@ local function count_accessible_cells(start, snake_grid, grid_size)
     return count
 end
 
---- Generate a list of target positions for the AI to consider
+-- Generate a list of target positions for the AI to consider
 local function generate_targets(snake_grid, food_grid, grid_rows, grid_cols, settings)
     local targets = {}
     local head_row, head_col = snake_grid[1][1], snake_grid[1][2]
@@ -86,7 +86,7 @@ local function generate_targets(snake_grid, food_grid, grid_rows, grid_cols, set
     return targets
 end
 
---- Breadth-First Search (BFS) pathfinding from snake head to target
+-- Breadth-First Search (BFS) pathfinding from snake head to target
 function bfs.ai_path(snake, target, grid_size)
     local rows, cols = grid_size[1], grid_size[2]
     local directions = {{-1,0},{1,0},{0,-1},{0,1}}
@@ -134,7 +134,7 @@ function bfs.ai_path(snake, target, grid_size)
     return nil
 end
 
---- Select the best path among all targets based on accessible space after the move
+-- Select the best path among all targets based on accessible space after the move
 local function select_best_path(snake_grid, targets, grid_rows, grid_cols)
     local best = nil
     local best_score = -1
@@ -163,24 +163,24 @@ local function select_best_path(snake_grid, targets, grid_rows, grid_cols)
     return path_to_food, best_path
 end
 
---- Main AI update function, called every frame
+-- Main AI update function, called every frame
 function bfs.update(dt)
     -- Convert positions to grid coordinates
     local gridSize = gameConfig.gridSize
-    local grid_rows = math.floor(gameConfig.screenHeight / gridSize)
-    local grid_cols = math.floor(gameConfig.screenWidth / gridSize)
+    local grid_rows = gameConfig.rows
+    local grid_cols = gameConfig.columns
 
     -- Convert snake segments to grid coordinates
     snake_grid = {}
     for _, segment in ipairs(snakeState.snake) do
-        local col = math.floor(segment.x / gridSize)
-        local row = math.floor((segment.y - gameConfig.scoreZoneHeight) / gridSize)
+        local col = math.floor(segment.x / gridSize) - 1
+        local row = math.floor((segment.y - gameConfig.scoreZoneHeight) / gridSize) - 1
         table.insert(snake_grid, {row, col})
     end
 
     -- Convert food position to grid coordinates
-    local food_col = math.floor(gameState.food.x / gridSize)
-    local food_row = math.floor((gameState.food.y - gameConfig.scoreZoneHeight) / gridSize)
+    local food_col = math.floor(gameState.food.x / gridSize) - 1
+    local food_row = math.floor((gameState.food.y - gameConfig.scoreZoneHeight) / gridSize) - 1
     food_grid = {food_row, food_col}
 
     -- Generate alternative targets
@@ -201,7 +201,7 @@ function bfs.update(dt)
         elseif dx == 0 and dy == 1 then dir = "right"
         end
         if dir then
-            gameState.directionQueue = {dir}
+            snakeState.directionQueue = {dir}
         end
     else
         -- No path found: try a safe move
@@ -226,7 +226,7 @@ function bfs.update(dt)
                 end
             end
             if safe then
-                gameState.directionQueue = {d.dir}
+                snakeState.directionQueue = {d.dir}
                 break
             end
         end
@@ -236,21 +236,21 @@ function bfs.update(dt)
     if not gameState.gameOver and not gameState.pause then
         gameState.moveTimer = gameState.moveTimer + dt
         if gameState.moveTimer >= 1 / gameState.newSpeed then
-            moveSnake()
-            checkCollisions()
+            player.moveSnake()
+            player.checkCollisions()
             gameState.moveTimer = 0
         end
     end
 end
 
---- Draw debug information and AI path visualization
+-- Draw debug information and AI path visualization
 function bfs.draw()
     if bfs.settings.debug then
-        -- Draw the path in yellow
+        -- Draw the path
         if path and #path > 0 and snake_grid[1] then
-            love.graphics.setColor(1, 1, 0)
-            local x = snake_grid[1][2] * gameConfig.gridSize + gameConfig.gridSize / 2
-            local y = snake_grid[1][1] * gameConfig.gridSize + gameConfig.gridSize / 2 + gameConfig.scoreZoneHeight
+            love.graphics.setColor(1, 1, 0) -- #FFFF00
+            local x = (snake_grid[1][2] + 1) * gameConfig.gridSize + gameConfig.gridSize / 2
+            local y = (snake_grid[1][1] + 1) * gameConfig.gridSize + gameConfig.gridSize / 2 + gameConfig.scoreZoneHeight
             for _, d in ipairs(path) do
                 local nx = x + d[2] * gameConfig.gridSize
                 local ny = y + d[1] * gameConfig.gridSize
@@ -259,23 +259,26 @@ function bfs.draw()
             end
         end
 
-        -- Draw the light blue square showing the area of alternative path calculation
+        -- Draw the square showing the area of alternative path calculation
         if snake_grid[1] then
-            love.graphics.setColor(0, 0.8, 1, 0.1) -- Light blue with transparency
-            local x = (snake_grid[1][2] - bfs.settings.altPathRadius) * gameConfig.gridSize
-            local y = (snake_grid[1][1] - bfs.settings.altPathRadius) * gameConfig.gridSize + gameConfig.scoreZoneHeight
+            love.graphics.setColor(0, 0.8, 1, 0.1) -- #00CCFF
+            local x = (snake_grid[1][2] - bfs.settings.altPathRadius + 1) * gameConfig.gridSize
+            local y = (snake_grid[1][1] - bfs.settings.altPathRadius + 1) * gameConfig.gridSize + gameConfig.scoreZoneHeight
             local size = (bfs.settings.altPathRadius * 2 + 1) * gameConfig.gridSize
             love.graphics.rectangle("fill", x, y, size, size)
         end
 
-        -- Debug infos
-        love.graphics.setColor(1, 1, 1)
+        -- Debug infos at the bottom left
+        love.graphics.setColor(0, 0, 0) -- #000000
+        local margin = 10
+        local line_height = 20
+        local base_y = gameConfig.screenHeight + gameConfig.gridSize + margin
         if snake_grid[1] then
-            love.graphics.print("Snake head grid: " .. snake_grid[1][2] .. "," .. snake_grid[1][1], 10, gameConfig.screenHeight - 60)
+            love.graphics.print("Snake head grid: " .. snake_grid[1][2] .. "," .. snake_grid[1][1], margin, base_y)
         end
         if food_grid then
-            love.graphics.print("Food grid: " .. food_grid[2] .. "," .. food_grid[1], 10, gameConfig.screenHeight - 40)
-            love.graphics.print("Path length: " .. (path and #path or "nil"), 10, gameConfig.screenHeight - 20)
+            love.graphics.print("Food grid: " .. food_grid[2] .. "," .. food_grid[1], margin, base_y + line_height)
+            love.graphics.print("Path length: " .. (path and #path or "nil"), margin, base_y + 2 * line_height)
         end
     end
 end

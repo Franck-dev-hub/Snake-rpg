@@ -11,9 +11,10 @@ local modules = {
     demo_menu = "menu.demo_menu",
     gameover_menu = "menu.gameover_menu",
     bfs = "ai.bfs",
+    lvl_ups = "game.lvl_ups",
     json = "libs.json"
 }
-
+ 
 -- Import modules 
 for name, path in pairs(modules) do
     _G[name] = require(path)
@@ -21,14 +22,11 @@ end
 
 -- Game configuration
 gameConfig = {
-    columns = 10,
-    rows = 10,
-    gridSize = 64,
+    screenWidth = 800,
+    screenHeight = 600,
     scoreZoneHeight = 40,
     gameDatas = {},
 }
-gameConfig.screenWidth = gameConfig.columns * gameConfig.gridSize
-gameConfig.screenHeight = gameConfig.rows * gameConfig.gridSize + gameConfig.scoreZoneHeight
 
 -- Font settings
 fontSettings = {
@@ -40,21 +38,25 @@ fontSettings = {
 
 -- Game area coordinates
 gameSize = {
+    gameWidth = gameConfig.screenWidth,
+    gameHeight = gameConfig.screenHeight - gameConfig.scoreZoneHeight,
+    columns = 5,
+    rows = 5,
     topleft = {x = 0, y = gameConfig.scoreZoneHeight},
     topright = {x = gameConfig.screenWidth, y = gameConfig.scoreZoneHeight},
-    bottomright = {x = gameConfig.screenWidth, y = gameConfig.screenHeight},
-    bottomleft = {x = 0, y = gameConfig.screenHeight},
+    bottomright = {x = gameConfig.screenWidth, y = gameConfig.screenHeight + gameConfig.scoreZoneHeight},
+    bottomleft = {x = 0, y = gameConfig.screenHeight + gameConfig.scoreZoneHeight},
 }
 
 -- Snake state
 snakeState = {
     snake = {},                 -- Snake body segments
-    snakeLength = 5,            -- Initial snake length
+    snake_length = 2,           -- Initial snake length
     direction = 'right',        -- Initial movement direction
     directionQueue = {},        -- Direction queue for buffered input
 }
 
--- Ai Settings
+-- Ai Settingslua
 aiSettings = {
     aiSpeed = 10,               -- Ai speed 
     altPath = 10,               -- Number of calculated path
@@ -66,9 +68,9 @@ gameState = {
     food = {},                  -- Food position
     score = 0,                  -- Current score
     gameOver = false,           -- Game over flag
-    speed = 4.5,                -- Base snake speed (units/sec)
-    newSpeed = 4.5,             -- Current snake speed
-    speedStep = 0.5,            -- Speed increment per food
+    speed = 4.8,                -- Base snake speed (units/sec)
+    newSpeed = 4.8,             -- Current snake speed
+    speedStep = 0.2,            -- Speed increment per food
     moveTimer = 0,              -- Snake movement timer
     pause = false,              -- Pause flag
     currentState = "menu",      -- Current game state
@@ -79,6 +81,7 @@ gameState = {
 game_high_score = {
     high_score = 0,             -- Best score
     bfs_high_score = 0,         -- Best BFS score
+    xp = 0,                     -- Player experience
 }
 
 -- Game initialization
@@ -106,7 +109,17 @@ function love.load()
         game_high_score.bfs_high_score = state.getVar("BFS_Highscore")
     end
 
-    love.window.setMode(gameConfig.screenWidth, gameConfig.screenHeight)
+    if state.getVar("xp") == nil then
+        state.setVar("xp", game_high_score.xp)
+    else
+        game_high_score.xp = state.getVar("xp")
+    end
+
+    -- Applique le niveau initial pour définir gridSize, columns, rows, etc.
+    lvl_ups.apply_level(lvl_ups.get_level(game_high_score.xp))
+
+    main_game.game_size()
+    love.window.setMode(gameConfig.realWidth, gameConfig.realHeight + gameConfig.scoreZoneHeight, {resizable = false, fullscreen = false, vsync = true})
     state.resetGame()
 end
 
@@ -120,6 +133,7 @@ function love.update(dt)
     }
     local handler = stateHandlers[gameState.currentState] or main_game.update
     handler(dt)
+    main_game.game_size()
 end
 
 

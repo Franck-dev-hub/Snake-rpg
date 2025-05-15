@@ -11,16 +11,17 @@ local variables = {}
 -- Resets the game state to initial values
 function state.resetGame()
     gameState.score = 0
-    gameState.direction = 'right'
-    gameState.directionQueue = {}
+    snakeState.direction = 'right'
+    snakeState.directionQueue = {}
     gameState.gameOver = false
     gameState.newSpeed = gameState.speed
     snakeState.snake = {}
-    createSnake()
+    gameState.food = {}
+    player.createSnake()
     food.spawnFood()
 end
 
--- Charger les variables depuis le fichier JSON
+-- Load from JSON
 function state.load()
     local file = io.open(dataFile, "r")
     if file then
@@ -35,12 +36,11 @@ function state.load()
             end
         end
     else
-        -- Pas de fichier, rien à charger
         variables = {}
     end
 end
 
--- Sauvegarder les variables dans le fichier JSON
+-- Save JSON
 function state.save()
     local file = io.open(dataFile, "w+")
     if not file then
@@ -51,27 +51,19 @@ function state.save()
     file:close()
 end
 
--- Ajouter ou modifier une variable
+-- Add or modify variable
 function state.setVar(key, value)
     variables[key] = value
 end
 
--- Récupérer une variable
+-- Fecth variable
 function state.getVar(key)
     return variables[key]
 end
 
--- Pour récupérer toutes les variables
+-- Fetch all
 function state.getAll()
     return variables
-end
-
-function state.initHighScore(key, value)
-    if state.getVar(key) == nil then
-        state.setVar(key, value)
-    else
-        value = state.getVar(key)
-    end
 end
 
 return state
