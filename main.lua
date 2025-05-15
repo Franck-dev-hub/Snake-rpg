@@ -1,25 +1,36 @@
 -- main.lua
 io.stdout:setvbuf("no")
 
--- lua files
-local player = require("game.player")
-local main_game = require("game.main_game")
-local menu = require("menu.menu")
-local state = require("game.state")
-local main_menu = require("menu.main_menu")
-local gameover_menu = require("menu.gameover_menu")
-local ia = require("ia.ia")
-
---imports
-json = require("libs.json")
-
-gameConfig = {
-    screenWidth = 800, -- Set screen width
-    screenHeight = 600, -- Set screen height
-    gridSize = 20, -- Set grid size (used for snake and food)
-    gameDatas = {},
+-- Modules
+local modules = {
+    player = "game.player",
+    main_game = "game.main_game",
+    menu_generic = "menu.menu_generic",
+    state = "game.state",
+    main_menu = "menu.main_menu",
+    demo_menu = "menu.demo_menu",
+    gameover_menu = "menu.gameover_menu",
+    bfs = "ai.bfs",
+    json = "libs.json"
 }
 
+-- Import modules 
+for name, path in pairs(modules) do
+    _G[name] = require(path)
+end
+
+-- Game configuration
+gameConfig = {
+    columns = 10,
+    rows = 10,
+    gridSize = 64,
+    scoreZoneHeight = 40,
+    gameDatas = {},
+}
+gameConfig.screenWidth = gameConfig.columns * gameConfig.gridSize
+gameConfig.screenHeight = gameConfig.rows * gameConfig.gridSize + gameConfig.scoreZoneHeight
+
+-- Font settings
 fontSettings = {
     font_path = "assets/font/menu.ttf",
     main_menu = 25,
@@ -27,93 +38,123 @@ fontSettings = {
     gameover_menu = 25,
 }
 
+-- Game area coordinates
 gameSize = {
-    topleft = {x = 0, y = gameConfig.gridSize * 2},
-    topright = {x = gameConfig.screenWidth, y = gameConfig.gridSize * 2},
+    topleft = {x = 0, y = gameConfig.scoreZoneHeight},
+    topright = {x = gameConfig.screenWidth, y = gameConfig.scoreZoneHeight},
     bottomright = {x = gameConfig.screenWidth, y = gameConfig.screenHeight},
     bottomleft = {x = 0, y = gameConfig.screenHeight},
 }
 
--- Snake variables
+-- Snake state
 snakeState = {
-    snake = {}, -- Table to store snake body segments
-    snakeLength = 5, -- Initial length of the snake
-    direction = 'right', -- Initial movement direction
-    directionQueue = {}, -- Next movement direction
+    snake = {},                 -- Snake body segments
+    snakeLength = 5,            -- Initial snake length
+    direction = 'right',        -- Initial movement direction
+    directionQueue = {},        -- Direction queue for buffered input
 }
 
--- Game Variables
+-- Ai Settings
+aiSettings = {
+    aiSpeed = 10,               -- Ai speed 
+    altPath = 10,               -- Number of calculated path
+    algo = "bfs",               -- Select ai algorithm
+}
+
+-- Game state
 gameState = {
-    food = {}, -- Food position
-    score = 0, -- Player's score
-    highScore = 0, -- Player's best score
-    gameOver = false, -- Game over flag
-    speed = 4.5, -- Base speed of the snake (units per second)
-    newSpeed = 4.5, -- Current speed (increased over time)
-    speedStep = 0.5, -- Speed increase per food eaten
-    moveTimer = 0, -- Timer to control snake movement
-    pause = false, -- Pause flag
-    currentState = "menu", -- Main menu selection
+    food = {},                  -- Food position
+    score = 0,                  -- Current score
+    gameOver = false,           -- Game over flag
+    speed = 4.5,                -- Base snake speed (units/sec)
+    newSpeed = 4.5,             -- Current snake speed
+    speedStep = 0.5,            -- Speed increment per food
+    moveTimer = 0,              -- Snake movement timer
+    pause = false,              -- Pause flag
+    currentState = "menu",      -- Current game state
+    gameState = "player_game",  -- Selected game state
 }
 
--- Initialize game
-function love.load()
-    -- Seed the random number generator
-    math.randomseed(os.time())
+-- Game Score
+game_high_score = {
+    high_score = 0,             -- Best score
+    bfs_high_score = 0,         -- Best BFS score
+}
 
-    -- Nearest-neighbor filtering
+-- Game initialization
+function love.load()
+    math.randomseed(os.time())
     love.graphics.setDefaultFilter("nearest", "nearest")
 
-    -- Load menus
-    menu.load(fontSettings)
+    menu_generic.load(fontSettings)
     main_menu.load()
     main_game.load()
+    demo_menu.load()
     gameover_menu.load()
 
-    -- Load or create player_stats file
-    if love.filesystem.getInfo("player_stats.json") then state.loadDatas() else state.saveDatas() end 
+    -- Load / init player statistics
+    state.load()
+    if state.getVar("Highscore") == nil then
+        state.setVar("Highscore", game_high_score.high_score)
+    else
+        game_high_score.high_score = state.getVar("Highscore")
+    end
 
-    -- Set window size
+    if state.getVar("BFS_Highscore") == nil then
+        state.setVar("BFS_Highscore", game_high_score.bfs_high_score)
+    else
+        game_high_score.bfs_high_score = state.getVar("BFS_Highscore")
+    end
+
     love.window.setMode(gameConfig.screenWidth, gameConfig.screenHeight)
-
-    -- Reset variables for a new game
     state.resetGame()
 end
 
--- Main game update function
+-- Main update loop
 function love.update(dt)
-    if gameState.currentState == "menu" then
-        main_menu.update(dt)
-    elseif gameState.currentState == "demo" then
-        ia.update(dt)
-    elseif gameState.currentState == "gameover" then
-        gameover_menu.update(dt)
-    else
-        main_game.update(dt)
-    end
+    local stateHandlers = {
+        menu = main_menu.update,
+        demo_menu = demo_menu.update,
+        bfs = bfs.update,
+        gameover = gameover_menu.update,
+    }
+    local handler = stateHandlers[gameState.currentState] or main_game.update
+    handler(dt)
 end
 
--- Render the game elements
+
 function love.draw()
-    if gameState.currentState == "menu" then
-        main_menu.draw()
-    else
-        main_game.draw()
-    end
+    local stateHandlers = {
+        menu = main_menu.draw,
+        demo_menu = demo_menu.draw,
+    }
+    local handler = stateHandlers[gameState.currentState] or main_game.draw
+    handler()
 end
 
--- Handle keyboard input
 function love.keypressed(key)
     if gameState.currentState == "menu" then
         main_menu.keypressed(key, function(action)
             if action == "play" then
                 state.resetGame()
                 gameState.currentState = "game"
+                gameState.gameState = "player_game"
             elseif action == "demo" then
                 state.resetGame()
-                gameState.currentState = "demo"
+                gameState.currentState = "demo_menu"
             elseif action == "quit" then
                 love.event.quit()
+            end
+        end)
+    elseif gameState.currentState == "demo_menu" then
+        demo_menu.keypressed(key, function(action)
+            if action == "bfs" then
+                aiSettings.algo = "bfs"
+                state.resetGame()
+                gameState.currentState = "bfs"
+                gameState.gameState = "bfs_game"
+            elseif action == "quit" then
+                gameState.currentState = "menu"
             end
         end)
     elseif gameState.currentState == "gameover" then
@@ -123,11 +164,17 @@ function love.keypressed(key)
             elseif action == "play" then
                 state.resetGame()
                 gameState.currentState = "game"
+                gameState.gameState = "player_game"
+            elseif action == "demo" then
+                state.resetGame()
+                gameState.currentState = "demo_menu"
             elseif action == "quit" then
                 love.event.quit()
             end
-        end) 
-    elseif gameState.currentState ~= "demo" then
+        end)
+    elseif gameState.currentState == "demo" then
+        ai.keypressed(key)
+    else
         main_game.keypressed(key)
     end
 end

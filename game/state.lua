@@ -4,6 +4,11 @@ local state = {}
 -- Imports
 local food = require("game.food")
 
+-- Variables
+local dataFile = "save.json"
+local variables = {}
+
+-- Resets the game state to initial values
 function state.resetGame()
     gameState.score = 0
     gameState.direction = 'right'
@@ -15,28 +20,57 @@ function state.resetGame()
     food.spawnFood()
 end
 
-function state.saveDatas()
-    local datas = {{Highscore = gameState.highScore}}
-    love.filesystem.write("player_stats.json", json.encode(datas))
+-- Charger les variables depuis le fichier JSON
+function state.load()
+    local file = io.open(dataFile, "r")
+    if file then
+        local content = file:read("*a")
+        file:close()
+        if content and #content > 0 then
+            local ok, decoded = pcall(json.decode, content)
+            if ok and type(decoded) == "table" then
+                variables = decoded
+            else
+            print("Erreur de décodage JSON ou fichier vide")
+            end
+        end
+    else
+        -- Pas de fichier, rien à charger
+        variables = {}
+    end
 end
 
-function state.loadDatas()
-    if not love.filesystem.getInfo("player_stats.json") then
-        gameState.highScore = 0
-        return
+-- Sauvegarder les variables dans le fichier JSON
+function state.save()
+    local file = io.open(dataFile, "w+")
+    if not file then
+        error("Impossible d'ouvrir le fichier pour sauvegarder")
     end
+    local content = json.encode(variables)
+    file:write(content)
+    file:close()
+end
 
-    local contenu = love.filesystem.read("player_stats.json")
-    if not contenu then
-        gameState.highScore = 0
-        return
-    end
+-- Ajouter ou modifier une variable
+function state.setVar(key, value)
+    variables[key] = value
+end
 
-    local datas = json.decode(contenu)
-    if type(datas) == "table" and datas[1] and datas[1].Highscore then
-        gameState.highScore = datas[1].Highscore
+-- Récupérer une variable
+function state.getVar(key)
+    return variables[key]
+end
+
+-- Pour récupérer toutes les variables
+function state.getAll()
+    return variables
+end
+
+function state.initHighScore(key, value)
+    if state.getVar(key) == nil then
+        state.setVar(key, value)
     else
-        gameState.highScore = 0
+        value = state.getVar(key)
     end
 end
 
